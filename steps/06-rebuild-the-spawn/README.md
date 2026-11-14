@@ -61,8 +61,9 @@ wrong position, or wrong number of `random()` calls.
 
 <details><summary>Hint 1: the empty-cell list</summary>
 
-In the minified code, the method that lists empty cells calls another method that loops
-over the grid with two nested `for` loops. Which variable does the *outer* loop count? Your
+In the minified code, the method that lists empty cells (`tt`) calls another method (`it`) that
+loops over the grid with two nested `for` loops. Find both with
+`node scripts/rea-find.mjs work/2048-analysis.json --name tt` (and then `--name it`). Which variable does the *outer* loop count? Your
 list must be in the same order, or "pick item number k" picks a different cell.
 </details>
 

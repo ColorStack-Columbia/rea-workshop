@@ -11,13 +11,14 @@
 //   node scripts/rea-find.mjs <analysis.json> <search text> [--kind KIND] [--file NAME] [--limit N]
 //   node scripts/rea-find.mjs <analysis.json> --literals          # list every literal value REA saw
 //   node scripts/rea-find.mjs <analysis.json> --kinds             # count nodes by kind
+//   node scripts/rea-find.mjs <analysis.json> --name Z            # exact name (mangled names are short, so use this)
 //
 // Examples:
 //   node scripts/rea-find.mjs work/2048-analysis.json 0.9
 //   node scripts/rea-find.mjs work/2048-analysis.json random --kind call-site
 //
 // Make the analysis file first with:
-//   rea analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json
+//   rea analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json 2> work/2048-analysis.log
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -32,11 +33,13 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === '--limit') opts.limit = Number(argv[++i]) || 25;
   else if (a === '--literals') opts.literals = true;
   else if (a === '--kinds') opts.kinds = true;
+  else if (a === '--name') opts.name = argv[++i];
   else positional.push(a);
 }
 const [jsonPath, query] = positional;
-if (!jsonPath || (!query && !opts.literals && !opts.kinds)) {
+if (!jsonPath || (!query && !opts.name && !opts.literals && !opts.kinds)) {
   console.error('usage: node scripts/rea-find.mjs <analysis.json> <search text> [--kind KIND] [--file NAME] [--limit N]');
+  console.error('       node scripts/rea-find.mjs <analysis.json> --name EXACT_NAME     # exact, case-sensitive name (e.g. a mangled method like Z)');
   console.error('       node scripts/rea-find.mjs <analysis.json> --literals | --kinds');
   process.exit(2);
 }
@@ -72,6 +75,14 @@ if (graphs.length === 0) {
 }
 
 const nodes = graphs.flatMap((g) => g.nodes);
+const relations = graphs.flatMap((g) => g.relations || []);
+const writesTo = new Map();
+for (const r of relations) {
+  if (r.relation !== 'writes-property') continue;
+  if (!writesTo.has(r.target_node_id)) writesTo.set(r.target_node_id, []);
+  writesTo.get(r.target_node_id).push(r);
+}
+const functions = nodes.filter((n) => n.kind === 'function');
 const byId = new Map(nodes.map((n) => [n.node_id, n]));
 const root = inputRoots[0] || '<app>';
 const fmtRange = (r) => (r && r.start && r.end ? `${r.start.line}:${r.start.column}-${r.end.line}:${r.end.column}` : '?');
@@ -108,10 +119,11 @@ if (opts.literals) {
   process.exit(0);
 }
 
-const q = String(query).toLowerCase();
+const q = String(query ?? '').toLowerCase();
 const hits = nodes.filter((n) => {
   if (opts.kind && n.kind !== opts.kind) return false;
   if (opts.file && !fileOf(n).includes(opts.file)) return false;
+  if (opts.name) return n.label === opts.name || n.properties?.name === opts.name;
   const hay = `${n.label ?? ''} ${JSON.stringify(n.properties ?? {})}`.toLowerCase();
   return hay.includes(q);
 });
@@ -124,13 +136,42 @@ for (const n of hits) {
   if (!seen.has(key)) { seen.add(key); unique.push(n); }
 }
 
-console.log(`${unique.length} match(es) for "${query}"${opts.kind ? ` (kind=${opts.kind})` : ''}. Showing up to ${opts.limit}.\n`);
+console.log(`${unique.length} match(es) for "${opts.name ?? query}"${opts.kind ? ` (kind=${opts.kind})` : ''}. Showing up to ${opts.limit}.\n`);
 for (const n of unique.slice(0, opts.limit)) {
   const v = valueOf(n);
   const fn = n.function_node_id ? byId.get(n.function_node_id) : null;
   console.log(`• ${n.kind}  "${n.label}"${v !== undefined ? `  value=${JSON.stringify(v)}` : ''}`);
+  if (n.kind === 'property-slot') {
+    // A property has no single location. Show where it is ASSIGNED, and the function assigned to it (if any).
+    const path_ = (n.properties?.property_path || []).join('.');
+    console.log(`    property path:    ${path_ || n.label}`);
+    const writes = writesTo.get(n.node_id) || [];
+    if (writes.length === 0) console.log('    assigned at:      (REA recorded no assignment)');
+    for (const w of writes.slice(0, 5)) {
+      const loc = w.evidence?.location?.value;
+      console.log(`    assigned at:      ${fileOf(n)} ${fmtRange(loc)}`);
+      const fnAssigned = loc && functions.find((f) => {
+        const r = rangeOf(f);
+        return r && r.start.line === loc.end.line && r.start.column > loc.end.column && r.start.column <= loc.end.column + 2;
+      });
+      if (fnAssigned) console.log(`    its value is a function at ${fmtRange(rangeOf(fnAssigned))}\n    read it:          ${showCmd(fnAssigned)}`);
+    }
+    console.log('');
+    continue;
+  }
   console.log(`    where:            ${fileOf(n)} ${fmtRange(rangeOf(n))}`);
   if (fn) console.log(`    inside function:  ${fmtRange(rangeOf(fn))}   (node ${fn.node_id.slice(0, 22)}…)`);
+  if (fn) {
+    // REA doesn't record which function is nested in which, so work it out from the ranges.
+    const fr = rangeOf(fn);
+    const key = (r) => r.start.line * 1e7 + r.start.column;
+    const endKey = (r) => r.end.line * 1e7 + r.end.column;
+    const outer = functions
+      .filter((f) => f !== fn && fileOf(f) === fileOf(fn) && rangeOf(f) && key(rangeOf(f)) <= key(fr) && endKey(rangeOf(f)) >= endKey(fr))
+      .sort((a, b) => (endKey(rangeOf(a)) - key(rangeOf(a))) - (endKey(rangeOf(b)) - key(rangeOf(b))))
+      .slice(0, 2);
+    if (outer.length) console.log(`    which is inside:  ${outer.map((f) => fmtRange(rangeOf(f))).join('  then  ')}   (bigger = outer)`);
+  }
   const evt = n.properties?.event_name;
   if (evt) console.log(`    event name:       ${evt}`);
   if (fn) console.log(`    read it:          ${showCmd(fn)}`);

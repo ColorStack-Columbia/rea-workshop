@@ -8,7 +8,7 @@ First step for anything setup-related: `node scripts/check-env.mjs --agent <your
 ### `rea: command not found`
 You don't need a global install. Put `npx -y rea-agents@6.9.0` wherever the steps say `rea`:
 ```bash
-npx -y rea-agents@6.9.0 analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json
+npx -y rea-agents@6.9.0 analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json 2> work/2048-analysis.log
 ```
 The first run downloads REA into npm's cache, which takes a little while.
 

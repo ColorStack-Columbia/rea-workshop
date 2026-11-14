@@ -62,7 +62,9 @@ node scripts/show-code.mjs targets/2048/game.min.js <range> --pretty
 <details><summary>Hint 1: how do I know which letter means "won"?</summary>
 
 Find the function that shows `"You win!"`. It takes a parameter and shows "You win!" when
-it's true. Then look for the code that *calls* that function, and see which property it passes.
+it's true. That function is assigned to a property named `message`. To find who *calls* it, search
+for reads of that name: `node scripts/rea-find.mjs work/2048-analysis.json message --kind expression`.
+Look at the function those reads are inside, and see which property it passes.
 </details>
 
 <details><summary>Hint 2: can you keep playing after winning?</summary>
@@ -74,7 +76,8 @@ game's "Keep going" button sets it.
 <details><summary>Hint 3: when exactly is game over checked?</summary>
 
 Look at the end of the big function that handles a move. Something only happens
-`if` the board actually changed.
+`if` the board actually changed. The merge code you found is a small callback; rea-find's
+`which is inside:` line gives you the ranges of the bigger functions around it.
 </details>
 
 ## Check yourself

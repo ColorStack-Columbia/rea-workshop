@@ -78,7 +78,7 @@ answer from memory or from the Hyper source on GitHub.
 rea analyze-javascript-application /Applications/Hyper.app/Contents/Resources/app.asar \
   --integrity-policy record-and-continue \
   --source-paths-json steps/07-optional-hyper-demo/source-paths.json \
-  --json > work/hyper-analysis.json
+  --json > work/hyper-analysis.json 2> work/hyper-analysis.log
 node scripts/rea-find.mjs work/hyper-analysis.json node-pty
 node scripts/rea-find.mjs work/hyper-analysis.json change --kind listener
 ```

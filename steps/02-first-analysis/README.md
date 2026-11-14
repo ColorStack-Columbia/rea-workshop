@@ -37,7 +37,7 @@ Target: the folder targets/2048 (use its absolute path). Only analyze that folde
    Tell me: how many JavaScript files were parsed, whether coverage was complete,
    and the evidence_id / parent_evidence_id it returned.
 2. Also save the full analysis to a file so we can search it later. Run in the terminal:
-   rea analyze-javascript-application "<absolute path to targets/2048>" --json > work/2048-analysis.json
+   rea analyze-javascript-application "<absolute path to targets/2048>" --json > work/2048-analysis.json 2> work/2048-analysis.log
    (if "rea" is not found, use: npx -y rea-agents@6.9.0 instead of "rea")
 3. Run: node scripts/rea-find.mjs work/2048-analysis.json --kinds
    and:  node scripts/rea-find.mjs work/2048-analysis.json --literals
@@ -52,7 +52,7 @@ source code online, and do not answer from memory. Base everything on REA output
 ## No MCP? Do it with the command line
 
 ```bash
-rea analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json
+rea analyze-javascript-application "$(pwd)/targets/2048" --json > work/2048-analysis.json 2> work/2048-analysis.log
 node scripts/rea-find.mjs work/2048-analysis.json --kinds
 node scripts/rea-find.mjs work/2048-analysis.json --literals
 ```
@@ -62,6 +62,7 @@ node scripts/rea-find.mjs work/2048-analysis.json --literals
 ## What you should see
 
 - The analysis finishes in **about 2 seconds**: 1 JavaScript file parsed, 0 parse failures.
+  (`work/2048-analysis.log` fills with `rea_progress` lines. Those are just progress messages. If the analysis fails, the error ends up in the `.json` file.)
 - Node kinds: roughly 1,700 `expression`, 200 `property-slot`, 200 `call-site`, 96 `function`, 83 `literal` …
 - About 27 distinct literals, including `0.9`, `2`, `4`, `2048`, `"You win!"`, `"Game over!"`, `"game-won"`.
 - A long list of **limitations** and **unknowns**. That's normal: REA is telling you

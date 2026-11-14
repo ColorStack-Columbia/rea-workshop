@@ -29,8 +29,9 @@ Method:
 2. Find every place that reads Math.random (try: node scripts/rea-find.mjs work/2048-analysis.json random).
 3. For each one, print the function that contains it with:
    node scripts/show-code.mjs targets/2048/game.min.js <range> --pretty
-4. Follow any helper function those functions call (for example the one that picks a cell),
-   using rea-find / show-code the same way.
+4. Follow any helper function those functions call (for example the one that picks a cell).
+   Mangled method names are short, so look them up by exact name:
+   node scripts/rea-find.mjs work/2048-analysis.json --name <method name>
 5. Explain the answer in plain language for a first-year CS student.
 
 For every claim, cite: the REA node kind, the location (line:col range), and the code you printed.
@@ -64,10 +65,11 @@ node scripts/show-code.mjs targets/2048/game.min.js <the "inside function" range
 
 <details><summary>Hint 2: what's `this.grid.Z()`?</summary>
 
-It's a method call on the grid. Search for where `Z` is defined:
-`node scripts/rea-find.mjs work/2048-analysis.json Z --kind property-slot`, then use
-show-code on the function at that location. Or just ask your agent to "find where the
-method Z is assigned on a prototype and show it".
+It's a method call on the grid. Ask REA where a property named exactly `Z` is assigned:
+`node scripts/rea-find.mjs work/2048-analysis.json --name Z`. It prints the function that gets
+assigned to `Z`, plus the show-code command to read it. That function calls `this.tt()`;
+follow it the same way with `--name tt`. Use `--name` for mangled names: a plain search for
+`Z` also matches every word containing a "z", like `size`.
 </details>
 
 <details><summary>Hint 3: a detail you'll need in step 06</summary>
