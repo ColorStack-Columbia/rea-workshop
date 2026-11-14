@@ -1,0 +1,7 @@
+# your own analysis outputs
+work/*
+!work/.gitkeep
+# instructor build checkout (answer-key branch only)
+instructor/source/
+node_modules/
+.DS_Store

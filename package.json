@@ -1,0 +1,10 @@
+{
+  "name": "rea-workshop",
+  "private": true,
+  "description": "Beginner reverse-engineering workshop with REA. No dependencies.",
+  "license": "MIT",
+  "scripts": {
+    "check": "node scripts/check-env.mjs",
+    "test-spawn": "node steps/06-rebuild-the-spawn/test.js"
+  }
+}
