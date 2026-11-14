@@ -95,7 +95,8 @@ const showCmd = (n) => {
   const rel = path.relative(process.cwd(), root);
   const base = rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel : root;
   const file = root.endsWith('.asar') ? `${base}::${fileOf(n)}` : path.join(base, fileOf(n));
-  return `node scripts/show-code.mjs "${file}" ${fmtRange(r)} --pretty`;
+  // --pretty only helps minified (single-line) code; multi-line ranges are already readable.
+  return `node scripts/show-code.mjs "${file}" ${fmtRange(r)}${r.start.line === r.end.line ? ' --pretty' : ''}`;
 };
 
 if (opts.kinds) {
@@ -127,6 +128,10 @@ const hits = nodes.filter((n) => {
   const hay = `${n.label ?? ''} ${JSON.stringify(n.properties ?? {})}`.toLowerCase();
   return hay.includes(q);
 });
+
+// Most useful first: things with a location, and the app's own code before node_modules.
+const score = (n) => (rangeOf(n)?.start ? 0 : 2) + (fileOf(n).includes('node_modules') ? 1 : 0);
+hits.sort((a, b) => score(a) - score(b));
 
 // Collapse duplicates that point at the same place.
 const unique = [];

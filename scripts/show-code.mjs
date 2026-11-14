@@ -135,5 +135,13 @@ if (context > 0) {
   const after = text.slice(end, end + context);
   console.log(`${before}>>>${body}<<<${after}`);
 } else {
-  console.log(isPretty ? pretty(body) : body);
+  const multiLine = sl !== el;
+  if (multiLine) {
+    // Already-formatted code: print it with line numbers instead of re-indenting it.
+    const width = String(el).length;
+    // Show the full lines the range touches, so indentation stays intact.
+    lines.slice(sl - 1, el).forEach((t, i) => console.log(`${String(sl + i).padStart(width)} | ${t}`));
+  } else {
+    console.log(isPretty ? pretty(body) : body);
+  }
 }

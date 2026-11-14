@@ -61,6 +61,9 @@ Target: /Applications/Hyper.app/Contents/Resources/app.asar
      "ui/window.js","config/paths.js","config/import.js","config/init.js","plugins/install.js",
      "commands.js"]
    Tell me how long it took and how many files were parsed.
+   The MCP summary only has counts. To search the details, also save the full result:
+   rea analyze-javascript-application "<app.asar path>" --integrity-policy record-and-continue --source-paths-json steps/07-optional-hyper-demo/source-paths.json --json > work/hyper-analysis.json 2> work/hyper-analysis.log
+   and search it with: node scripts/rea-find.mjs work/hyper-analysis.json <text> [--kind call-site|listener] [--file name]
 2. Question A: How does the main process create a terminal session, and what actually starts
    the shell? Hints: REA records a call that loads the native module "node-pty", and event
    listeners in ui/window.js such as rpc.on('new').
@@ -79,13 +82,16 @@ rea analyze-javascript-application /Applications/Hyper.app/Contents/Resources/ap
   --integrity-policy record-and-continue \
   --source-paths-json steps/07-optional-hyper-demo/source-paths.json \
   --json > work/hyper-analysis.json 2> work/hyper-analysis.log
-node scripts/rea-find.mjs work/hyper-analysis.json node-pty
+node scripts/rea-find.mjs work/hyper-analysis.json node-pty --kind call-site
+node scripts/rea-find.mjs work/hyper-analysis.json new --kind listener --file window
 node scripts/rea-find.mjs work/hyper-analysis.json change --kind listener
 ```
 
 ## What you should see
 
-- ~5 seconds, 12 files parsed (out of ~2,200 in the archive).
+- About 5 seconds, 11 JavaScript files parsed (`package.json` is JSON, not JavaScript), out of ~2,200 files in the archive.
+- `rea-find … node-pty --kind call-site` points at `session.js` line 43: `spawn = require('node-pty').spawn;`.
+- `rea-find … change --kind listener` points at `config.js` line 55, a file watcher's `change` event.
 - Hyper's code is **not** minified. It's compiler output with comments, and the archive even
   ships **source maps** (`.map` files that map shipped code back to the original source). Real
   apps often make reverse engineering easier than you'd expect.
