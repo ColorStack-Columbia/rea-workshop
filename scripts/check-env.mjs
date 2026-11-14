@@ -38,7 +38,7 @@ function report(ok, label, detail, fix) {
 
 function run(cmd, args) {
   const r = spawnSync(cmd, args, { encoding: 'utf8', shell: process.platform === 'win32', timeout: 60000 });
-  return { ok: r.status === 0, out: `${r.stdout || ''}${r.stderr || ''}`.trim(), error: r.error };
+  return { ok: r.status === 0, stdout: (r.stdout || '').trim(), out: `${r.stdout || ''}${r.stderr || ''}`.trim(), error: r.error };
 }
 
 function cmpVersion(a, b) {
@@ -119,7 +119,7 @@ if (reaCmd) {
     '--evidence_output', path.join(repo, 'work', `.check-${Date.now()}.json`), '--json']);
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   let parsed = false;
-  try { parsed = !!JSON.parse(r.out.slice(r.out.indexOf('{'))); } catch { /* ignore */ }
+  try { parsed = !!JSON.parse(r.stdout); } catch { /* ignore */ }
   report(r.ok && parsed, 'REA test analysis of targets/2048', r.ok ? `worked in ${secs}s` : 'failed',
     ['Copy the error above into the TROUBLESHOOTING.md search, or ask a facilitator.', r.out.split('\n').slice(-3).join('\n       ')]);
   for (const f of fs.readdirSync(path.join(repo, 'work'))) if (f.startsWith('.check-')) fs.rmSync(path.join(repo, 'work', f), { force: true });
@@ -135,10 +135,17 @@ if (agent) {
     const [cmd, ...pre] = reaCmd.split(' ');
     const r = run(cmd, [...pre, 'doctor', '--client', agent, '--json']);
     let doc = null;
-    try { doc = JSON.parse(r.out.slice(r.out.indexOf('{'))); } catch { /* ignore */ }
+    try { doc = JSON.parse(r.stdout); } catch { /* ignore */ }
     const reg = doc?.scope_checks?.find((c) => c.name === `registration:${agent}`);
     if (reg?.ok) {
       report(true, `REA registered with ${agent}`, reg.detail || 'yes');
+    } else if (reg?.classification === 'config_drift') {
+      report('warn', `REA registered with ${agent}`, 'yes, but for a different REA version than your command line', [
+        'This usually still works. To line them up, preview and then apply:',
+        `  npx -y rea-agents@${REA_TESTED_VERSION} setup --client ${agent} --dry-run`,
+        `  npx -y rea-agents@${REA_TESTED_VERSION} setup --client ${agent} --yes   (then restart your agent)`,
+        reg.remediation ? `REA says: ${reg.remediation}` : '',
+      ].filter(Boolean));
     } else {
       report(false, `REA registered with ${agent}`, reg ? reg.classification : 'could not tell', [
         'Preview what setup would change (safe, changes nothing):',
