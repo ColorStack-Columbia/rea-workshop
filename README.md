@@ -33,7 +33,7 @@ part you and your agent do.
 
 ## Setup checklist (do this before the workshop)
 
-- [ ] **Clone the repo:** `git clone <this repo's URL> rea-workshop && cd rea-workshop`
+- [ ] **Clone the repo:** `git clone https://github.com/ColorStack-Columbia/rea-workshop.git && cd rea-workshop`
 - [ ] **Run the environment check:**
   ```bash
   node scripts/check-env.mjs --agent claude_code
